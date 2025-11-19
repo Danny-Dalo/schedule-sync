@@ -1,8 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Task, SortField, SortOrder } from "@/types/task";
 import { TaskItem } from "@/components/TaskItem";
 import { TaskDialog } from "@/components/TaskDialog";
 import { TaskFilters } from "@/components/TaskFilters";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { UsernameDialog } from "@/components/UsernameDialog";
 import { Button } from "@/components/ui/button";
 import { Plus, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +16,24 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("priority");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [username, setUsername] = useState<string>("");
+  const [showUsernameDialog, setShowUsernameDialog] = useState(false);
+
+  useEffect(() => {
+    const savedUsername = localStorage.getItem("taskManagerUsername");
+    if (savedUsername) {
+      setUsername(savedUsername);
+    } else {
+      setShowUsernameDialog(true);
+    }
+  }, []);
+
+  const handleSaveUsername = (name: string) => {
+    setUsername(name);
+    localStorage.setItem("taskManagerUsername", name);
+    setShowUsernameDialog(false);
+    toast.success(`Welcome, ${name}!`);
+  };
 
   const handleSaveTask = (taskData: Omit<Task, "id" | "createdAt" | "updatedAt"> & { id?: string }) => {
     const now = new Date();
@@ -111,11 +131,18 @@ const Index = () => {
       <div className="container max-w-5xl mx-auto px-4 py-8">
         <header className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold text-foreground">Task Manager</h1>
-            <Button onClick={handleNewTask} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Task
-            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                {username ? `${username}'s Tasks` : "Task Manager"}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button onClick={handleNewTask} className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Task
+              </Button>
+            </div>
           </div>
           <p className="text-muted-foreground">
             Organize and track your tasks efficiently
@@ -186,6 +213,11 @@ const Index = () => {
           onOpenChange={setDialogOpen}
           task={editingTask}
           onSave={handleSaveTask}
+        />
+
+        <UsernameDialog
+          open={showUsernameDialog}
+          onSave={handleSaveUsername}
         />
       </div>
     </div>
