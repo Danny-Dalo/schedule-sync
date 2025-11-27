@@ -48,20 +48,41 @@ const Index = () => {
   useEffect(() => {
     if (!session?.user) return;
 
-    // Fetch user profile
-    const fetchProfile = async () => {
-      const { data, error } = await supabase
+    // Fetch user profile and tasks
+    const fetchData = async () => {
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("username")
         .eq("id", session.user.id)
         .single();
 
-      if (data && !error) {
-        setUsername(data.username || "");
+      if (profileData) {
+        setUsername(profileData.username || "");
+      }
+
+      // Fetch tasks
+      const { data: tasksData, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+      if (tasksData && !error) {
+        const formattedTasks: Task[] = tasksData.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description || "",
+          status: task.status as Task["status"],
+          priority: task.priority as Task["priority"],
+          dueDate: task.due_date ? new Date(task.due_date) : null,
+          createdAt: new Date(task.created_at),
+          updatedAt: new Date(task.updated_at),
+        }));
+        setTasks(formattedTasks);
       }
     };
 
-    fetchProfile();
+    fetchData();
   }, [session]);
 
   const handleLogout = async () => {
@@ -69,42 +90,107 @@ const Index = () => {
     navigate("/auth");
   };
 
-  const handleSaveTask = (taskData: Omit<Task, "id" | "createdAt" | "updatedAt"> & { id?: string }) => {
+  const handleSaveTask = async (taskData: Omit<Task, "id" | "createdAt" | "updatedAt"> & { id?: string }) => {
+    if (!session?.user) return;
+
     const now = new Date();
     
     if (taskData.id) {
-      setTasks(tasks.map(task => 
-        task.id === taskData.id 
-          ? { ...task, ...taskData, updatedAt: now }
-          : task
-      ));
-      toast.success("Task updated successfully");
+      // Update existing task
+      const { error } = await supabase
+        .from("tasks")
+        .update({
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+          priority: taskData.priority,
+          due_date: taskData.dueDate?.toISOString(),
+        })
+        .eq("id", taskData.id)
+        .eq("user_id", session.user.id);
+
+      if (!error) {
+        setTasks(tasks.map(task => 
+          task.id === taskData.id 
+            ? { ...task, ...taskData, updatedAt: now }
+            : task
+        ));
+        toast.success("Task updated successfully");
+      } else {
+        toast.error("Failed to update task");
+      }
     } else {
-      const newTask: Task = {
-        ...taskData,
-        id: crypto.randomUUID(),
-        createdAt: now,
-        updatedAt: now,
-      };
-      setTasks([...tasks, newTask]);
-      toast.success("Task created successfully");
+      // Create new task
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({
+          user_id: session.user.id,
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+          priority: taskData.priority,
+          due_date: taskData.dueDate?.toISOString(),
+        })
+        .select()
+        .single();
+
+      if (data && !error) {
+        const newTask: Task = {
+          id: data.id,
+          title: data.title,
+          description: data.description || "",
+          status: data.status as Task["status"],
+          priority: data.priority as Task["priority"],
+          dueDate: data.due_date ? new Date(data.due_date) : null,
+          createdAt: new Date(data.created_at),
+          updatedAt: new Date(data.updated_at),
+        };
+        setTasks([newTask, ...tasks]);
+        toast.success("Task created successfully");
+      } else {
+        toast.error("Failed to create task");
+      }
     }
     
     setEditingTask(null);
   };
 
-  const handleDeleteTask = (id: string) => {
-    setTasks(tasks.filter(task => task.id !== id));
-    toast.success("Task deleted");
+  const handleDeleteTask = async (id: string) => {
+    if (!session?.user) return;
+
+    const { error } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", session.user.id);
+
+    if (!error) {
+      setTasks(tasks.filter(task => task.id !== id));
+      toast.success("Task deleted");
+    } else {
+      toast.error("Failed to delete task");
+    }
   };
 
-  const handleStatusChange = (id: string, status: Task["status"]) => {
-    setTasks(tasks.map(task => 
-      task.id === id 
-        ? { ...task, status, updatedAt: new Date() }
-        : task
-    ));
-    toast.success(`Task marked as ${status}`);
+  const handleStatusChange = async (id: string, status: Task["status"]) => {
+    if (!session?.user) return;
+
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status })
+      .eq("id", id)
+      .eq("user_id", session.user.id);
+
+    if (!error) {
+      setTasks(tasks.map(task => 
+        task.id === id 
+          ? { ...task, status, updatedAt: new Date() }
+          : task
+      ));
+      toast.success(`Task marked as ${status}`);
+    } else {
+      toast.error("Failed to update task status");
+    }
   };
 
   const handleEditTask = (task: Task) => {
