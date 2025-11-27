@@ -1,38 +1,72 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Task, SortField, SortOrder } from "@/types/task";
 import { TaskItem } from "@/components/TaskItem";
 import { TaskDialog } from "@/components/TaskDialog";
 import { TaskFilters } from "@/components/TaskFilters";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { UsernameDialog } from "@/components/UsernameDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, CheckCircle2 } from "lucide-react";
+import { Plus, CheckCircle2, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Session } from "@supabase/supabase-js";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const [session, setSession] = useState<Session | null>(null);
+  const [username, setUsername] = useState<string>("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("priority");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  const [username, setUsername] = useState<string>("");
-  const [showUsernameDialog, setShowUsernameDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedUsername = localStorage.getItem("taskManagerUsername");
-    if (savedUsername) {
-      setUsername(savedUsername);
-    } else {
-      setShowUsernameDialog(true);
-    }
-  }, []);
+    // Check authentication
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (!session) {
+          navigate("/auth");
+        }
+      }
+    );
 
-  const handleSaveUsername = (name: string) => {
-    setUsername(name);
-    localStorage.setItem("taskManagerUsername", name);
-    setShowUsernameDialog(false);
-    toast.success(`Welcome, ${name}!`);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (!session) {
+        navigate("/auth");
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!session?.user) return;
+
+    // Fetch user profile
+    const fetchProfile = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", session.user.id)
+        .single();
+
+      if (data && !error) {
+        setUsername(data.username || "");
+      }
+    };
+
+    fetchProfile();
+  }, [session]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
   const handleSaveTask = (taskData: Omit<Task, "id" | "createdAt" | "updatedAt"> & { id?: string }) => {
@@ -126,6 +160,14 @@ const Index = () => {
     return { completed, ongoing, pending, total: tasks.length };
   }, [tasks]);
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-5xl mx-auto px-4 py-8">
@@ -138,6 +180,9 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-2">
               <ThemeToggle />
+              <Button onClick={handleLogout} variant="outline" size="icon">
+                <LogOut className="h-4 w-4" />
+              </Button>
               <Button onClick={handleNewTask} className="gap-2">
                 <Plus className="h-4 w-4" />
                 New Task
@@ -213,11 +258,6 @@ const Index = () => {
           onOpenChange={setDialogOpen}
           task={editingTask}
           onSave={handleSaveTask}
-        />
-
-        <UsernameDialog
-          open={showUsernameDialog}
-          onSave={handleSaveUsername}
         />
       </div>
     </div>
