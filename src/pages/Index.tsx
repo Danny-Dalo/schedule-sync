@@ -6,7 +6,7 @@ import { TaskDialog } from "@/components/TaskDialog";
 import { TaskFilters } from "@/components/TaskFilters";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Plus, CheckCircle2, LogOut } from "lucide-react";
+import { Plus, CheckCircle2, LogOut, Brain } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -266,6 +266,10 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-2">
               <ThemeToggle />
+              <Button onClick={() => navigate("/focus")} variant="outline">
+                <Brain className="h-4 w-4 mr-2" />
+                Focus
+              </Button>
               <Button onClick={handleLogout} variant="outline" size="icon">
                 <LogOut className="h-4 w-4" />
               </Button>
