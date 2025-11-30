@@ -5,13 +5,11 @@ import { TaskItem } from "@/components/TaskItem";
 import { TaskDialog } from "@/components/TaskDialog";
 import { TaskFilters } from "@/components/TaskFilters";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { FocusSessionSidebar } from "@/components/FocusSessionSidebar";
 import { Button } from "@/components/ui/button";
 import { Plus, CheckCircle2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -257,33 +255,30 @@ const Index = () => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <div className="flex-1">
-          <div className="container max-w-5xl mx-auto px-4 py-8">
-            <header className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">
-                    {username ? `${username}'s Tasks` : "Task Manager"}
-                  </h1>
-                </div>
-                <div className="flex items-center gap-2">
-                  <SidebarTrigger />
-                  <ThemeToggle />
-                  <Button onClick={handleLogout} variant="outline" size="icon">
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                  <Button onClick={handleNewTask} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    New Task
-                  </Button>
-                </div>
-              </div>
-              <p className="text-muted-foreground">
-                Organize and track your tasks efficiently
-              </p>
-            </header>
+    <div className="min-h-screen bg-background">
+      <div className="container max-w-5xl mx-auto px-4 py-8">
+        <header className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                {username ? `${username}'s Tasks` : "Task Manager"}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button onClick={handleLogout} variant="outline" size="icon">
+                <LogOut className="h-4 w-4" />
+              </Button>
+              <Button onClick={handleNewTask} className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Task
+              </Button>
+            </div>
+          </div>
+          <p className="text-muted-foreground">
+            Organize and track your tasks efficiently
+          </p>
+        </header>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-card p-4 rounded-lg border">
@@ -344,17 +339,14 @@ const Index = () => {
           )}
         </div>
 
-            <TaskDialog
-              open={dialogOpen}
-              onOpenChange={setDialogOpen}
-              task={editingTask}
-              onSave={handleSaveTask}
-            />
-          </div>
-        </div>
-        <FocusSessionSidebar />
+        <TaskDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          task={editingTask}
+          onSave={handleSaveTask}
+        />
       </div>
-    </SidebarProvider>
+    </div>
   );
 };
 
